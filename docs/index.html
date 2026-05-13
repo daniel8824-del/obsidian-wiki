@@ -210,6 +210,7 @@
     <a href="#install">설치</a>
     <a href="#qmd">QMD</a>
     <a href="#plugins">옵시디언 보조</a>
+    <a href="#memory">agentmemory</a>
     <a href="#cron">cron (선택)</a>
   </div>
 </nav>
@@ -249,7 +250,7 @@
     <div class="step"><div class="step-num">2</div><div><div class="step-label">관심 웹 페이지 3-5개 클립</div><div class="step-desc">§2 — 10분</div></div></div>
     <div class="step"><div class="step-num">3</div><div><div class="step-label">wiki 스킬 설치 (git clone 한 줄)</div><div class="step-desc">§4 — 5분</div></div></div>
     <div class="step"><div class="step-num">4</div><div><div class="step-label">"ingest해줘" 자연어 호출</div><div class="step-desc">§3 — 10분</div></div></div>
-    <div class="step"><div class="step-num optional">+</div><div><div class="step-label">선택: QMD 검색 · 옵시디언 보조 플러그인 · cron 자동화</div><div class="step-desc">§5 · §6 · §7 — 익숙해진 후</div></div></div>
+    <div class="step"><div class="step-num optional">+</div><div><div class="step-label">선택: QMD 검색 · 옵시디언 보조 · agentmemory · cron</div><div class="step-desc">§5 · §6 · §7 · §8 — 익숙해진 후</div></div></div>
   </div>
 
   <h3><span class="num">1</span>3계층 구조 (Karpathy 표준)</h3>
@@ -477,7 +478,7 @@ qmd update && qmd embed</pre>
   </table>
 
   <div class="note-box">
-    <strong>임베딩은 자동 X</strong> — <code class="inline">qmd update</code>를 직접 호출해야 인덱스 갱신. 매일 한 번씩 수동 호출이 가장 단순. 자주 갱신하고 싶으면 <a href="#cron">§7 cron</a>으로 자동화.
+    <strong>임베딩은 자동 X</strong> — <code class="inline">qmd update</code>를 직접 호출해야 인덱스 갱신. 매일 한 번씩 수동 호출이 가장 단순. 자주 갱신하고 싶으면 <a href="#cron">§8 cron</a>으로 자동화.
   </div>
 </section>
 
@@ -532,8 +533,57 @@ qmd update && qmd embed</pre>
   </div>
 </section>
 
+<section id="memory">
+  <span class="section-tag optional">§ 7 · agentmemory (선택 · 별도 트랙)</span>
+  <h2><span class="accent">AI 세션</span>을 자동 메모리로</h2>
+  <p class="why">왜? wiki는 외부 자료 수집·컴파일. agentmemory는 AI 대화·결정 자체를 4-tier 메모리로 저장. <strong>별도 트랙</strong>으로 운영하면 강력.</p>
+
+  <p>wiki(외부 raw)와 다른 입력원 — AI 세션 자체. 수동 호출 위주로 시작 → 자동 캡처(hooks)는 익숙해진 후 선택.</p>
+
+  <h3><span class="num">1</span>설치</h3>
+  <pre>npx @agentmemory/agentmemory
+
+# 자동 등록되는 것:
+# - 4-tier 메모리 SQLite (외부 의존성 0)
+# - 51 MCP tools (memory_recall, memory_save, memory_smart_search 등)
+# - 12 hooks (선택 — 기본 비활성, 별도 설정으로 활성)</pre>
+
+  <h3><span class="num">2</span>4-tier 메모리</h3>
+  <table>
+    <thead><tr><th>Tier</th><th>의미</th><th>예시</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① Working</strong></td><td>현재 작업 (raw observations)</td><td>"방금 X 파일 수정 중"</td></tr>
+      <tr><td><strong>② Episodic</strong></td><td>세션 일화 (compressed summaries)</td><td>"어제 인증 모듈 작업"</td></tr>
+      <tr><td><strong>③ Semantic</strong></td><td>의미적 사실·패턴</td><td>"우리 팀은 JWT 사용"</td></tr>
+      <tr><td><strong>④ Procedural</strong></td><td>워크플로우·결정 패턴</td><td>"디버깅 4단계 절차"</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="num">3</span>수동 호출 (권장 — 처음엔 이것만)</h3>
+  <pre># 자연어로 호출 — MCP tool이 자동 활성화
+"이전에 OAuth 관련 작업 메모리에서 찾아줘"
+  → memory_smart_search 자동 호출
+
+"오늘 결정 사항 메모리에 저장해줘 — JWT refresh 패턴 채택"
+  → memory_save 자동 호출
+
+"지난 주 디버깅 절차 회상해줘"
+  → memory_recall + episodic tier 검색</pre>
+
+  <div class="note-box">
+    <strong>자동 캡처(12 hooks)는 별도 설정</strong> — 기본은 수동만. wiki ingest · 하네스 룰과 겹칠 수 있어 처음엔 수동 호출만으로 충분합니다. 자동 캡처 원하면 <code class="inline">~/.claude/settings.json</code>에서 hooks 활성화 (선택).
+  </div>
+
+  <div class="ref-box">
+    <strong>wiki와 역할 분담</strong><br>
+    • <strong>wiki 스킬</strong> — 옵시디언 raw → wiki 마크다운 컴파일 (외부 자료)<br>
+    • <strong>agentmemory</strong> — AI 세션 결정·실수·맥락 (내부 컨텍스트)<br>
+    • 두 시스템은 독립 — 겹치지 않게 별도 트랙으로 운영
+  </div>
+</section>
+
 <section id="cron">
-  <span class="section-tag optional">§ 7 · cron 자동화 (선택 · 고급)</span>
+  <span class="section-tag optional">§ 8 · cron 자동화 (선택 · 고급)</span>
   <h2>QMD 갱신 · wiki ingest <span class="accent">자동 실행</span></h2>
   <p class="why">왜? 매번 수동 호출이 번거로우면 시스템 스케줄러로 자동화. <strong>기본은 수동, 익숙해진 후 추가</strong>.</p>
 
@@ -617,7 +667,8 @@ schtasks /create /tn "Wiki Ingest Morning" ^
       관련 자료: <a href="https://daniel8824-del.github.io/pos-day2/" target="_blank">pos-day2 본 강의</a> ·
       <a href="https://daniel8824-del.github.io/claude-harness-catalog/" target="_blank">Day 1 자료</a><br>
       참고 도구: <a href="https://obsidian.md/clipper" target="_blank">Obsidian Web Clipper</a> ·
-      <a href="https://github.com/anthropics/skills" target="_blank">anthropics/skills</a>
+      <a href="https://github.com/anthropics/skills" target="_blank">anthropics/skills</a> ·
+      <a href="https://github.com/rohitg00/agentmemory" target="_blank">rohitg00/agentmemory</a>
     </p>
   </div>
 </footer>
