@@ -209,7 +209,6 @@
     <a href="#wiki-skill">wiki 스킬</a>
     <a href="#install">설치</a>
     <a href="#qmd">QMD</a>
-    <a href="#plugins">옵시디언 보조</a>
     <a href="#memory">agentmemory</a>
     <a href="#cron">cron (선택)</a>
   </div>
@@ -250,7 +249,7 @@
     <div class="step"><div class="step-num">2</div><div><div class="step-label">관심 웹 페이지 3-5개 클립</div><div class="step-desc">§2 — 10분</div></div></div>
     <div class="step"><div class="step-num">3</div><div><div class="step-label">wiki 스킬 설치 (git clone 한 줄)</div><div class="step-desc">§4 — 5분</div></div></div>
     <div class="step"><div class="step-num">4</div><div><div class="step-label">"ingest해줘" 자연어 호출</div><div class="step-desc">§3 — 10분</div></div></div>
-    <div class="step"><div class="step-num optional">+</div><div><div class="step-label">선택: QMD 검색 · 옵시디언 보조 · agentmemory · cron</div><div class="step-desc">§5 · §6 · §7 · §8 — 익숙해진 후</div></div></div>
+    <div class="step"><div class="step-num optional">+</div><div><div class="step-label">선택: QMD 검색 · agentmemory · cron 자동화</div><div class="step-desc">§5 · §6 · §7 — 익숙해진 후</div></div></div>
   </div>
 
   <h3><span class="num">1</span>3계층 구조 (Karpathy 표준)</h3>
@@ -478,63 +477,12 @@ qmd update && qmd embed</pre>
   </table>
 
   <div class="note-box">
-    <strong>임베딩은 자동 X</strong> — <code class="inline">qmd update</code>를 직접 호출해야 인덱스 갱신. 매일 한 번씩 수동 호출이 가장 단순. 자주 갱신하고 싶으면 <a href="#cron">§8 cron</a>으로 자동화.
-  </div>
-</section>
-
-<section id="plugins">
-  <span class="section-tag optional">§ 6 · 옵시디언 보조 플러그인 (선택)</span>
-  <h2>옵시디언 GUI에서 <span class="accent">즉시 활용</span></h2>
-  <p class="why">왜? AI 스킬 외에 옵시디언 자체에도 위키 운영 도구가 풍부. GUI에서 바로 검색·시각화·자동 채우기.</p>
-
-  <table>
-    <thead><tr><th>플러그인</th><th>역할</th><th>활용 포인트</th></tr></thead>
-    <tbody>
-      <tr>
-        <td><strong>Web Clipper</strong> (공식)</td>
-        <td>웹 → 마크다운 raw</td>
-        <td>raw 수집 입구 (§2)</td>
-      </tr>
-      <tr>
-        <td><strong>Smart Connections</strong></td>
-        <td>로컬 임베딩 의미 검색</td>
-        <td>옵시디언 GUI에서 즉시 query (QMD CLI 대신)</td>
-      </tr>
-      <tr>
-        <td><strong>Dataview</strong></td>
-        <td>마크다운 쿼리</td>
-        <td>"최근 ingest된 페이지 5개" 동적 테이블</td>
-      </tr>
-      <tr>
-        <td><strong>Templater</strong></td>
-        <td>템플릿 자동 채우기</td>
-        <td>raw → wiki 변환 시 frontmatter 자동 생성</td>
-      </tr>
-      <tr>
-        <td><strong>Copilot for Obsidian</strong></td>
-        <td>옵시디언 안 AI 채팅</td>
-        <td>볼트 컨텍스트로 질의 (API 키 필요)</td>
-      </tr>
-      <tr>
-        <td><strong>Text Generator</strong></td>
-        <td>템플릿 기반 AI 생성</td>
-        <td>요약·태그 자동 생성</td>
-      </tr>
-      <tr>
-        <td><strong>Excalidraw</strong></td>
-        <td>다이어그램 · 화이트보드</td>
-        <td>엔티티 관계도 시각화</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="ref-box">
-    <strong>역할 분담</strong> — 옵시디언 플러그인은 <strong>GUI에서 즉시 활용</strong>. AI 스킬(wiki / QMD)은 <strong>CLI·AI 도구에서 호출</strong>. 둘은 같은 raw 폴더를 공유.
+    <strong>임베딩은 자동 X</strong> — <code class="inline">qmd update</code>를 직접 호출해야 인덱스 갱신. 매일 한 번씩 수동 호출이 가장 단순. 자주 갱신하고 싶으면 <a href="#cron">§7 cron</a>으로 자동화.
   </div>
 </section>
 
 <section id="memory">
-  <span class="section-tag optional">§ 7 · agentmemory (선택 · 별도 트랙)</span>
+  <span class="section-tag optional">§ 6 · agentmemory (선택 · 별도 트랙)</span>
   <h2><span class="accent">AI 세션</span>을 자동 메모리로</h2>
   <p class="why">왜? wiki는 외부 자료 수집·컴파일. agentmemory는 AI 대화·결정 자체를 4-tier 메모리로 저장. <strong>별도 트랙</strong>으로 운영하면 강력.</p>
 
@@ -583,7 +531,7 @@ qmd update && qmd embed</pre>
 </section>
 
 <section id="cron">
-  <span class="section-tag optional">§ 8 · cron 자동화 (선택 · 고급)</span>
+  <span class="section-tag optional">§ 7 · cron 자동화 (선택 · 고급)</span>
   <h2>QMD 갱신 · wiki ingest <span class="accent">자동 실행</span></h2>
   <p class="why">왜? 매번 수동 호출이 번거로우면 시스템 스케줄러로 자동화. <strong>기본은 수동, 익숙해진 후 추가</strong>.</p>
 
