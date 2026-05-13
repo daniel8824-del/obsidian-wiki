@@ -385,34 +385,20 @@ created: 2026-05-13
 
 <section id="install">
   <span class="section-tag">§ 5 · 환경별 설치</span>
-  <h2>표준 흐름 — <span class="accent">git clone + 등록</span></h2>
+  <h2>각 환경 폴더로 <span class="accent">cd → git clone</span></h2>
 
-  <p>SKILL.md 형식이 <strong>GitHub Agent Skills 표준</strong>이라 Claude Code · Codex CLI · Google Antigravity가 같은 스킬 파일을 인식. 가장 깔끔한 방법은 <strong>git clone 1번 → 환경별 디렉토리에 심볼릭 링크</strong>. 마켓플레이스 자연어 설치는 환경 의존적이라 비추천.</p>
+  <p>각 도구마다 고유 스킬 폴더가 있습니다. 그 폴더로 이동 → <code class="inline">git clone</code> 한 줄이면 끝. 심볼릭 링크 같은 복잡한 작업 X.</p>
 
-  <h3><span class="num">1</span>공통 — 1번만 git clone</h3>
-  <pre># 한 본을 받아서 모든 환경에서 공유
-git clone https://github.com/&lt;owner&gt;/&lt;wiki-skill-repo&gt; ~/skills/wiki
-
-# 예시 (anthropics 공식 스킬 모음)
-git clone https://github.com/anthropics/skills ~/skills/anthropics
-
-# 한 번 받은 폴더를 환경별로 link만 걸면 끝</pre>
-
-  <h3><span class="num">2</span>환경별 등록 (심볼릭 링크)</h3>
+  <h3><span class="num">1</span>방법 A — git clone (모든 환경 표준)</h3>
 
   <div class="env-card">
     <div class="env-h">
       <div class="env-name">Claude Code</div>
       <span class="env-tag">~/.claude/skills/</span>
     </div>
-    <pre>claude --version
-
-# 심볼릭 링크 (한 본 업데이트 → 자동 반영)
-mkdir -p ~/.claude/skills
-ln -s ~/skills/wiki ~/.claude/skills/wiki
-
-# 또는 복사 (환경 분리)
-cp -r ~/skills/wiki ~/.claude/skills/wiki
+    <pre>mkdir -p ~/.claude/skills
+cd ~/.claude/skills
+git clone https://github.com/&lt;owner&gt;/&lt;wiki-skill-repo&gt; wiki
 
 # 검증
 ls ~/.claude/skills/wiki/SKILL.md</pre>
@@ -427,9 +413,9 @@ ls ~/.claude/skills/wiki/SKILL.md</pre>
 winget install --id OpenAI.Codex -e
 codex --version
 
-# 같은 본을 codex 경로에 link
 mkdir -p ~/.copilot/skills
-ln -s ~/skills/wiki ~/.copilot/skills/wiki
+cd ~/.copilot/skills
+git clone https://github.com/&lt;owner&gt;/&lt;wiki-skill-repo&gt; wiki
 
 # 검증
 ls ~/.copilot/skills/wiki/SKILL.md</pre>
@@ -443,31 +429,42 @@ ls ~/.copilot/skills/wiki/SKILL.md</pre>
     <pre># Antigravity 설치
 # https://codelabs.developers.google.com/getting-started-google-antigravity
 
-# 프로젝트 루트에서 link (프로젝트별 적용)
+# 프로젝트 루트에서 (프로젝트별 적용)
 cd /path/to/your-project
 mkdir -p .github/skills
-ln -s ~/skills/wiki .github/skills/wiki
+cd .github/skills
+git clone https://github.com/&lt;owner&gt;/&lt;wiki-skill-repo&gt; wiki
 
-# AGENTS.md를 프로젝트 루트에 배치 (전역 룰)
+# AGENTS.md를 프로젝트 루트에 함께 배치
 # Antigravity가 .github/skills/ 자동 인식</pre>
   </div>
 
-  <h3><span class="num">3</span>호출 (자연어 — 3환경 동일)</h3>
+  <h3><span class="num">2</span>방법 B — 자연어 설치 (Claude Code 한정)</h3>
+
+  <p>Claude Code에는 플러그인 마켓플레이스가 있어 자연어로도 설치 가능합니다. 다만 다른 환경(Codex · Antigravity)은 마켓 X — 방법 A 사용.</p>
+
+  <pre># Claude Code 채팅에 입력
+"https://github.com/&lt;owner&gt;/&lt;wiki-skill-repo&gt; 이 플러그인 설치해줘"
+
+# AI가 자동 실행:
+# /plugin marketplace add &lt;owner&gt;/&lt;repo&gt;
+# /plugin install &lt;skill-name&gt;</pre>
+
+  <h3><span class="num">3</span>호출 (3환경 동일 자연어)</h3>
   <pre>"raw 폴더 새 파일 5개 ingest해줘"
-"인증 관련 이전 작업 있나? query"
-"위키 끊긴 링크 점검 (lint)"</pre>
+"인증 관련 이전 작업 있나?"
+"위키 끊긴 링크 점검"</pre>
 
   <div class="ref-box">
-    <strong>왜 git clone 방식?</strong><br>
-    • <strong>표준</strong> — 모든 OS·도구·환경에서 동일 명령. 마켓플레이스 의존 X<br>
-    • <strong>버전 관리</strong> — <code class="inline">git pull</code>로 업데이트, <code class="inline">git log</code>로 이력 추적<br>
-    • <strong>심볼릭 링크 = 한 본 운영</strong> — 한 번 update → 3개 환경 자동 반영<br>
-    • <strong>오프라인</strong> — 마켓 접근 제한된 회사망에서도 동작<br>
+    <strong>방법 A(git clone) 추천 이유</strong><br>
+    • <strong>표준</strong> — 모든 OS·도구·환경에서 동일 명령<br>
+    • <strong>버전 관리</strong> — <code class="inline">cd ~/.claude/skills/wiki && git pull</code>로 업데이트<br>
+    • <strong>오프라인 OK</strong> — 회사망 마켓 접근 제한되어도 git만 되면 동작<br>
     • <strong>커스터마이즈</strong> — 본인 fork 후 수정해도 동일 워크플로우
   </div>
 
   <div class="note-box">
-    <strong>Windows 심볼릭 링크</strong> — 관리자 PowerShell에서 <code class="inline">New-Item -ItemType SymbolicLink -Path ~/.claude/skills/wiki -Target ~/skills/wiki</code>. 또는 WSL에서 <code class="inline">ln -s</code> 그대로 사용.
+    <strong>SKILL.md 한 파일 = 3환경 동일</strong> — GitHub Agent Skills 표준이라 같은 스킬 파일을 3개 환경 모두 인식. 환경마다 스킬 폴더 경로만 다름. <a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills" target="_blank">공식 문서</a>.
   </div>
 </section>
 
