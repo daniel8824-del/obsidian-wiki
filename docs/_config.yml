@@ -1,0 +1,6 @@
+title: Obsidian Wiki — 옵시디언 클리퍼 + /wiki ingest 흐름
+description: Karpathy LLM Wiki 패턴 — Claude Code · Codex CLI · Google Antigravity 환경에서 동일 흐름 적용
+markdown: kramdown
+kramdown:
+  input: GFM
+permalink: /:basename/

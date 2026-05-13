@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obsidian Wiki | 옵시디언 클리퍼 + /wiki ingest 흐름</title>
+<meta name="description" content="Karpathy LLM Wiki 패턴 — 옵시디언 웹 클리퍼로 raw 수집 → /wiki ingest로 처리 → agentmemory 자동 캡처. Claude Code · Codex CLI · Google Antigravity 환경별 설치.">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #5e8ff5; --accent-dark: #2c5fd1; --accent-soft: #eaf0fc;
+    --border: #e3e6ea; --muted: #6b7480; --code-bg: #f6f8fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Pretendard', -apple-system, sans-serif;
+    color: #1a1f29; background: #fff; line-height: 1.65;
+  }
+  .container { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  .topbar {
+    position: sticky; top: 0; background: rgba(255,255,255,0.96);
+    border-bottom: 1px solid var(--border); z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .topbar .container {
+    display: flex; gap: 16px; align-items: center; height: 52px;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .topbar .brand { font-weight: 800; color: var(--accent-dark); margin-right: 8px; }
+  .topbar a { color: #444; text-decoration: none; font-size: 14px; }
+  .topbar a:hover { color: var(--accent-dark); }
+  .hero { padding: 56px 0 36px; border-bottom: 1px solid var(--border); }
+  .badge {
+    display: inline-block; padding: 5px 14px; background: var(--accent-soft);
+    color: var(--accent-dark); border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    font-weight: 700; letter-spacing: 0.04em; margin-bottom: 14px;
+  }
+  h1 { font-size: 38px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 14px; }
+  h1 .accent { color: var(--accent-dark); }
+  h2 {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.01em;
+    margin: 48px 0 14px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  h2 .accent { color: var(--accent-dark); }
+  h3 { font-size: 17px; font-weight: 700; margin: 24px 0 10px; color: #2a3140; }
+  h3 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; background: var(--accent-dark); color: #fff;
+    border-radius: 6px; font-size: 12px; font-weight: 800; margin-right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  p { margin: 10px 0; }
+  .lead { font-size: 16px; color: #2a3140; }
+  .section-tag {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--accent-dark); font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--accent-soft); padding: 4px 10px; border-radius: 4px;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  table th, table td {
+    border: 1px solid var(--border); padding: 10px 12px;
+    text-align: left; vertical-align: top;
+  }
+  table th {
+    background: var(--code-bg); font-weight: 700; color: #2a3140; font-size: 13px;
+  }
+  pre {
+    background: #1a1f29; color: #f0f0f0; padding: 14px 18px;
+    border-radius: 8px; font-size: 13px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; line-height: 1.55;
+  }
+  figure.comic { margin: 16px 0; }
+  figure.comic img {
+    width: 100%; max-width: 100%; display: block;
+    border-radius: 10px; border: 1px solid var(--border);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  }
+  figure.comic figcaption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--muted);
+    margin-top: 8px; letter-spacing: 0.02em;
+  }
+  .video-frame {
+    margin: 16px 0; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  }
+  .video-frame video { width: 100%; display: block; background: #000; }
+  .video-meta {
+    padding: 10px 14px; background: var(--code-bg);
+    font-size: 13px; color: var(--muted);
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: center;
+  }
+  .video-meta .label {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--accent-dark); background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 4px; font-weight: 700;
+  }
+  code.inline {
+    background: var(--code-bg); color: var(--accent-dark);
+    padding: 2px 6px; border-radius: 4px; font-size: 0.9em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent-dark); }
+  .ref-box {
+    background: var(--accent-soft); border-left: 4px solid var(--accent);
+    padding: 12px 16px; margin: 14px 0; border-radius: 6px; font-size: 14px;
+  }
+  .env-card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 22px; margin: 14px 0;
+    border-left: 4px solid var(--accent-dark);
+  }
+  .env-card .env-h {
+    display: flex; gap: 10px; align-items: baseline;
+    margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .env-card .env-name {
+    font-size: 17px; font-weight: 800; color: var(--accent-dark);
+  }
+  .env-card .env-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--muted); background: var(--code-bg);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .verb-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin: 16px 0;
+  }
+  .verb {
+    background: var(--code-bg); border-radius: 6px;
+    padding: 10px 12px; border-left: 3px solid var(--accent);
+  }
+  .verb .v {
+    font-family: 'JetBrains Mono', monospace; font-weight: 800;
+    color: var(--accent-dark); font-size: 14px;
+  }
+  .verb .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  @media (max-width: 720px) { .verb-grid { grid-template-columns: 1fr 1fr; } }
+  footer {
+    margin-top: 64px; padding: 28px 0; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13px;
+  }
+  footer a { color: var(--accent-dark); }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="container">
+    <span class="brand">Obsidian Wiki</span>
+    <a href="#what">패턴</a>
+    <a href="#clipper">클리퍼</a>
+    <a href="#ingest">ingest</a>
+    <a href="#install">설치</a>
+    <a href="#demo">데모</a>
+    <a href="#memory">agentmemory</a>
+    <a href="#qmd">QMD</a>
+    <a href="#cron">자동화</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="badge">DAY 2 보충 자료 · LLM WIKI</div>
+    <h1>옵시디언 <span class="accent">클리퍼</span> + <span class="accent">/wiki ingest</span> 흐름</h1>
+    <p class="lead">Karpathy LLM Wiki 패턴 — 웹 클리퍼로 raw 수집 → <code class="inline">/wiki ingest</code>로 처리 → agentmemory 자동 캡처. Claude Code · Codex CLI · Google Antigravity 환경에서 동일 흐름 적용.</p>
+
+    <div class="video-frame" style="margin-top:20px;">
+      <video controls preload="metadata">
+        <source src="videos/video3-llm-wiki-1min.mp4" type="video/mp4">
+        브라우저가 영상을 지원하지 않습니다.
+      </video>
+      <div class="video-meta">
+        <span class="label">영상 · 60초</span>
+        <strong>LLM 위키 — RAG가 아니라 축적</strong>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+<section id="what">
+  <span class="section-tag">§ 1 · LLM Wiki 패턴</span>
+  <h2>왜 <span class="accent">위키</span>인가</h2>
+
+  <p>"RAG는 매번 검색해서 답을 만든다. <strong>LLM Wiki는 지식이 쌓여서 답이 더 좋아진다.</strong>" — Andrej Karpathy.</p>
+
+  <figure class="comic">
+    <img src="images/01-prompt-project-skill.png" alt="PROMPT · PROJECT · SKILL">
+    <figcaption>프롬프트는 즉석 주문 · CLAUDE.md는 단골 노트 · SKILL은 전문 매뉴얼 — 위키는 단골 노트가 시간 축으로 쌓인 자산</figcaption>
+  </figure>
+
+  <h3><span class="num">1</span>3계층 구조</h3>
+  <pre>raw    — 불변 원자료 (대화 기록, 프로젝트 메모, 웹 클리핑)
+wiki   — AI 소유 마크다운 (요약 · 엔티티 · 상호 링크)
+schema — 운영 규칙 (CLAUDE.md, lint 정책)</pre>
+
+  <h3><span class="num">2</span>9 동사 (Daniel 본인 운영 패턴)</h3>
+  <p><code class="inline">/wiki</code> 스킬은 9개 동사를 한 네임스페이스로 통합. lazy load 패턴 — verb별 <code class="inline">refs/&lt;verb&gt;.md</code>만 동적 로드.</p>
+  <div class="verb-grid">
+    <div class="verb"><div class="v">ingest</div><div class="d">raw → wiki 페이지·엔티티 생성</div></div>
+    <div class="verb"><div class="v">query</div><div class="d">위키만 읽고 답변 합성</div></div>
+    <div class="verb"><div class="v">save</div><div class="d">6영역 라우팅 + 위키링크 검증</div></div>
+    <div class="verb"><div class="v">lint</div><div class="d">구조 검증 (FATAL/MAJOR/MINOR)</div></div>
+    <div class="verb"><div class="v">manage</div><div class="d">qmd update/embed/status</div></div>
+    <div class="verb"><div class="v">synthesize</div><div class="d">여러 파일 → Compile</div></div>
+    <div class="verb"><div class="v">critique</div><div class="d">모순/Stale/Gap 검증</div></div>
+    <div class="verb"><div class="v">compare</div><div class="d">5차원 매트릭스</div></div>
+    <div class="verb"><div class="v">eli5</div><div class="d">6섹션 평이 설명</div></div>
+  </div>
+
+  <div class="ref-box">
+    <strong>출처</strong> — <a href="https://github.com/AgriciDaniel/claude-obsidian" target="_blank">AgriciDaniel/claude-obsidian</a> (Daniel 본인 repo). Karpathy LLM Wiki Compiler/Runner 모델 기반. 단순 저장이 아닌 <strong>지식 엔진</strong>.
+  </div>
+</section>
+
+<section id="clipper">
+  <span class="section-tag">§ 2 · 옵시디언 웹 클리퍼</span>
+  <h2><span class="accent">웹 클리퍼</span>로 raw 수집</h2>
+
+  <p>옵시디언 공식 Chrome/Firefox 확장. 웹 페이지를 깔끔한 마크다운으로 옵시디언 볼트에 직접 저장.</p>
+
+  <h3><span class="num">1</span>설치 (1분)</h3>
+  <ol>
+    <li><a href="https://obsidian.md/clipper" target="_blank">obsidian.md/clipper</a>에서 브라우저 확장 설치</li>
+    <li>옵시디언 앱에서 볼트 폴더 지정 (예: <code class="inline">10_Raw/01_Articles/</code>)</li>
+    <li>템플릿 선택 — 기본 "Default" 또는 커스텀 (frontmatter + 본문)</li>
+  </ol>
+
+  <h3><span class="num">2</span>사용</h3>
+  <ol>
+    <li>저장하고 싶은 웹 페이지에서 확장 아이콘 클릭</li>
+    <li>제목·태그·요약 자동 추출 → 볼트에 <code class="inline">.md</code> 파일 생성</li>
+    <li>raw 폴더에 즉시 반영 (불변)</li>
+  </ol>
+
+  <div class="ref-box">
+    <strong>raw는 절대 수정 X</strong> — 원본 그대로 보존. 가공·요약·엔티티 추출은 모두 다음 단계 <code class="inline">/wiki ingest</code>에서.
+  </div>
+
+  <figure class="comic">
+    <img src="images/08-research.png" alt="리서치">
+    <figcaption>셰프의 시장조사 — 사내 위키 1차 → 외부 검색 2차 (Tier 게이트). 클리퍼는 외부 자료를 사내로 들이는 입구</figcaption>
+  </figure>
+</section>
+
+<section id="ingest">
+  <span class="section-tag">§ 3 · /wiki ingest 흐름</span>
+  <h2>raw → <span class="accent">wiki</span> 변환</h2>
+
+  <p>클리퍼로 수집한 raw 파일을 AI가 읽고, 요약·엔티티·상호 링크를 만들어 <code class="inline">20_Wiki/</code>에 저장. 단순 복사가 아닌 <strong>지식 컴파일</strong>.</p>
+
+  <h3><span class="num">1</span>자연어 호출</h3>
+  <pre>"오늘 클리퍼로 모은 raw 5개를 ingest해줘."
+
+# /wiki 스킬 자동 활성화
+# → refs/ingest.md lazy load
+# → Gold In 5필드 자동 추출
+# → 20_Wiki/ 페이지 생성
+# → 기존 엔티티와 자동 링크</pre>
+
+  <h3><span class="num">2</span>Gold In 5필드 (Soft 필터)</h3>
+  <p>raw가 "쓰레기통"이 되지 않도록, ingest 시 5개 필드를 자동 추출·확인:</p>
+  <table>
+    <thead><tr><th>필드</th><th>의미</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. 수집 이유</strong></td><td>왜 모았나? (목적)</td></tr>
+      <tr><td><strong>2. My Take</strong></td><td>내 관점에서 의의?</td></tr>
+      <tr><td><strong>3. 한 줄 통찰</strong></td><td>핵심 한 문장</td></tr>
+      <tr><td><strong>4. Gold Out</strong></td><td>그래서 뭘 얻었나? (수집 이유 비대칭 검증)</td></tr>
+      <tr><td><strong>5. Action Intent</strong></td><td><code class="inline">{action}: {target}</code> 예: "synthesize: harness §1"</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13px;color:var(--muted);"><strong>"왜 수집했는지 + 뭘 얻었는지 + 어디 쓸지" 답 못하면 Garbage In</strong> — Karpathy 철학 물리적 강제.</p>
+
+  <h3><span class="num">3</span>4-Tier 검색 (ingest 후 query 시)</h3>
+  <pre>Tier 1 — 20_Wiki (컴파일 지식, 자동 first)
+Tier 2 — 30_Claude (협업 기록, 자동)
+Tier 3 — 10_Raw (원본, 수동만 — "원본" 명시 시)
+Tier 4 — 외부 (Brave + Firecrawl, 마지막 폴백)</pre>
+</section>
+
+<section id="install">
+  <span class="section-tag">§ 4 · 환경별 설치</span>
+  <h2>3가지 환경에서 <span class="accent">동일 흐름</span></h2>
+
+  <p>SKILL.md 형식이 GitHub Agent Skills 표준이라 Claude Code · Codex CLI · Google Antigravity가 같은 스킬을 인식. 경로·설치 명령만 다름.</p>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Claude Code</div>
+      <span class="env-tag">Anthropic · 기본 환경</span>
+    </div>
+    <pre>claude --version
+
+# claude-obsidian 플러그인 설치 (자연어)
+"https://github.com/AgriciDaniel/claude-obsidian 이 플러그인 설치해줘"
+
+# AI가 자동 실행:
+# /plugin marketplace add AgriciDaniel/claude-obsidian
+# /plugin install claude-obsidian
+
+# 호출
+/wiki ingest 또는 자연어 "raw 5개 ingest"</pre>
+  </div>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Codex CLI (OpenAI)</div>
+      <span class="env-tag">Windows winget · GPT 모델</span>
+    </div>
+    <pre>winget install --id OpenAI.Codex -e
+codex --version
+
+# SKILL.md 직접 배치 (GitHub Agent Skills 표준)
+mkdir -p ~/.copilot/skills/wiki
+cp /path/to/claude-obsidian/SKILL.md \
+   ~/.copilot/skills/wiki/SKILL.md
+
+# 호출 (Codex Chat 자연어)
+"옵시디언 raw 폴더의 새 파일 5개를 ingest해줘"</pre>
+  </div>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Google Antigravity</div>
+      <span class="env-tag">Agent-first IDE · 2026</span>
+    </div>
+    <pre># Google Antigravity 설치
+# https://codelabs.developers.google.com/getting-started-google-antigravity
+
+# AGENTS.md를 프로젝트 루트에 배치
+# → Antigravity가 자동 인식
+
+# SKILL.md는 .github/skills/ 또는 .claude/skills/에
+mkdir -p .github/skills/wiki
+cp SKILL.md .github/skills/wiki/SKILL.md
+
+# 호출 — Manager view 또는 Editor view에서 자연어
+"raw 폴더 ingest 실행"</pre>
+  </div>
+
+  <div class="ref-box">
+    <strong>핵심</strong> — SKILL.md 한 파일이 3개 환경 모두에서 작동. 환경마다 설치 경로만 정합하면 됨. <a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills" target="_blank">GitHub Agent Skills 공식</a>.
+  </div>
+</section>
+
+<section id="demo">
+  <span class="section-tag">§ 5 · 자연어 호출 데모</span>
+  <h2>스킬 이름 외울 필요 <span class="accent">X</span></h2>
+
+  <p>상황을 그대로 말하면 AI가 적합한 verb를 자동 활성화. 9개 동사를 외울 필요 없습니다.</p>
+
+  <table>
+    <thead><tr><th>상황</th><th>자연어 호출</th><th>발동 verb</th></tr></thead>
+    <tbody>
+      <tr><td>새 raw 처리</td><td>"오늘 클리퍼로 모은 글 5개 정리해줘"</td><td><code class="inline">ingest</code></td></tr>
+      <tr><td>지식 회상</td><td>"이전에 OO 관련 작업 있었나?"</td><td><code class="inline">query</code></td></tr>
+      <tr><td>세션 마무리</td><td>"오늘 작업 위키에 저장해줘"</td><td><code class="inline">save</code></td></tr>
+      <tr><td>구조 검증</td><td>"끊긴 링크 · 중복 페이지 정리"</td><td><code class="inline">lint</code></td></tr>
+      <tr><td>여러 자료 합성</td><td>"이 5개 페이지로 종합 페이지 만들어줘"</td><td><code class="inline">synthesize</code></td></tr>
+      <tr><td>모순 점검</td><td>"이 결정 다른 페이지와 충돌 없나?"</td><td><code class="inline">critique</code></td></tr>
+      <tr><td>두 개념 비교</td><td>"A와 B 차이 5차원으로"</td><td><code class="inline">compare</code></td></tr>
+      <tr><td>쉽게 설명</td><td>"이거 초등학생도 알 수 있게"</td><td><code class="inline">eli5</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="memory">
+  <span class="section-tag">§ 6 · agentmemory 통합</span>
+  <h2><span class="accent">자동</span> 캡처 — 수동 ingest 보완</h2>
+
+  <p>옵시디언 클리퍼 = 수동 raw 수집. <strong>agentmemory</strong> = AI 세션 자체를 자동 캡처. 두 입력원이 wiki를 살찌움.</p>
+
+  <h3><span class="num">1</span>설치</h3>
+  <pre>npx @agentmemory/agentmemory
+
+# 자동 등록:
+# - 12 hooks (SessionStart/End, PreToolUse/PostToolUse, UserPromptSubmit 등)
+# - 51 MCP tools (memory_recall, memory_save 등)
+# - 4-tier 메모리 SQLite</pre>
+
+  <h3><span class="num">2</span>4-tier 메모리</h3>
+  <table>
+    <thead><tr><th>Tier</th><th>의미</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① Working</strong></td><td>현재 작업 (raw observations)</td></tr>
+      <tr><td><strong>② Episodic</strong></td><td>세션 일화 (compressed summaries)</td></tr>
+      <tr><td><strong>③ Semantic</strong></td><td>의미적 사실 · 패턴</td></tr>
+      <tr><td><strong>④ Procedural</strong></td><td>워크플로우 · 결정 패턴</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="num">3</span>wiki와의 역할 분담</h3>
+  <table>
+    <thead><tr><th>구분</th><th>역할</th><th>입력원</th></tr></thead>
+    <tbody>
+      <tr><td><strong>옵시디언 클리퍼</strong></td><td>외부 자료 수동 수집</td><td>웹 페이지 · 사용자 의도</td></tr>
+      <tr><td><strong>/wiki ingest</strong></td><td>raw → wiki 컴파일 (Gold In)</td><td>10_Raw/ → 20_Wiki/</td></tr>
+      <tr><td><strong>agentmemory</strong></td><td>세션 자동 캡처</td><td>모든 AI 대화 · 도구 호출</td></tr>
+      <tr><td><strong>QMD</strong></td><td>BM25 + 벡터 검색 (1초)</td><td>전체 마크다운 폴더</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ref-box">
+    <strong>전체 사이클</strong> — 클리퍼(외부) + agentmemory(세션) → wiki ingest → QMD 검색 → query 응답 → 새 raw로 다시 시작. <strong>지식이 복리로 자란다</strong>.
+  </div>
+
+  <p style="margin-top:24px;font-size:13px;color:var(--muted);">
+    참고: <a href="https://github.com/rohitg00/agentmemory" target="_blank">rohitg00/agentmemory</a> ·
+    <a href="https://github.com/AgriciDaniel/claude-obsidian" target="_blank">AgriciDaniel/claude-obsidian</a> ·
+    <a href="https://daniel8824-del.github.io/pos-day2/" target="_blank">pos-day2 본 강의</a>
+  </p>
+</section>
+
+<section id="qmd">
+  <span class="section-tag">§ 7 · QMD 설치 + 활용</span>
+  <h2>QMD — 사내 마크다운 <span class="accent">1초 검색</span></h2>
+
+  <div class="video-frame">
+    <video controls preload="metadata">
+      <source src="videos/video2-qmd-1min.mp4" type="video/mp4">
+      브라우저가 영상을 지원하지 않습니다.
+    </video>
+    <div class="video-meta">
+      <span class="label">영상 · 60초</span>
+      <strong>QMD — 4기능 (의미·키워드 검색 / 로컬 임베딩 / 점수 게이트 / 1초 응답)</strong>
+    </div>
+  </div>
+
+  <p>옵시디언 볼트 전체를 로컬 임베딩으로 인덱싱. <code class="inline">/wiki query</code>의 Tier 1·2 검색 엔진 역할.</p>
+
+  <h3><span class="num">1</span>설치</h3>
+  <pre># Python pip (가장 빠름)
+pip install qmd-cli
+
+# 또는 git clone (개발자)
+git clone https://github.com/danielmiessler/qmd ~/.local/qmd
+cd ~/.local/qmd && pip install -e .
+
+# 검증
+qmd --version</pre>
+
+  <h3><span class="num">2</span>볼트 등록 (1회)</h3>
+  <pre># 옵시디언 볼트 경로 지정
+qmd init /path/to/Zettelkasten
+
+# 임베딩 모델 (다국어 — 한국어·영어 동시 처리)
+qmd config set embed_model bge-m3
+
+# 최초 인덱싱 (수백 파일 약 1~3분)
+qmd update && qmd embed</pre>
+
+  <h3><span class="num">3</span>활용 명령</h3>
+  <table>
+    <thead><tr><th>명령</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td><code class="inline">qmd search "쿼리"</code></td><td>BM25 키워드 검색 (빠름)</td></tr>
+      <tr><td><code class="inline">qmd query "쿼리"</code></td><td>의미 벡터 검색 (RRF)</td></tr>
+      <tr><td><code class="inline">qmd update</code></td><td>새/변경 파일 인덱싱 (증분)</td></tr>
+      <tr><td><code class="inline">qmd embed</code></td><td>임베딩 재계산</td></tr>
+      <tr><td><code class="inline">qmd status</code></td><td>인덱스 상태 확인 (전체 파일 수 · 마지막 업데이트)</td></tr>
+      <tr><td><code class="inline">qmd reindex</code></td><td>전체 재인덱싱 (모델 변경 시)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ref-box">
+    <strong>임베딩은 자동 X</strong> — <code class="inline">qmd update</code>를 호출해야 변경된 파일이 인덱스에 반영됩니다. 새 raw가 자주 들어오면 §8 크론잡으로 30분 주기 자동 실행 권장.
+  </div>
+
+  <h3><span class="num">4</span>4-Tier 검색 (Claude에서 호출)</h3>
+  <pre>"이전에 OO 관련 작업 있었나?"
+
+# /wiki query 자동 활성화 → 4-Tier 순서:
+# Tier 1: 20_Wiki (컴파일 지식, 자동 first)
+# Tier 2: 30_Claude (협업 기록, 자동)
+# Tier 3: 10_Raw (수동 — "원본" 명시 시)
+# Tier 4: 외부 (Brave/Firecrawl, 마지막 폴백)
+
+# Score 분기:
+# ≥0.9 High  → 전문 Read 후 핵심 인용
+# 0.7-0.9    → 요약 + "읽어볼까?"
+# 0.5-0.7    → 제목만
+# <0.5       → silent skip</pre>
+</section>
+
+<section id="cron">
+  <span class="section-tag">§ 8 · 자동화 cron</span>
+  <h2>QMD 30분 · wiki 아침 9시 <span class="accent">자동 실행</span></h2>
+
+  <p>QMD 인덱싱 + raw 폴더 ingest를 시스템 스케줄러로 자동화. 사용자가 매번 명령 호출 X — 백그라운드에서 위키가 스스로 자란다.</p>
+
+  <h3><span class="num">1</span>QMD 30분 주기 인덱싱</h3>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Windows · Task Scheduler</div>
+      <span class="env-tag">schtasks (PowerShell 관리자)</span>
+    </div>
+    <pre>schtasks /create /tn "QMD Update" ^
+  /tr "wsl bash -c 'qmd update && qmd embed'" ^
+  /sc MINUTE /mo 30 /ru "%USERNAME%"
+
+# 확인
+schtasks /query /tn "QMD Update"
+
+# 삭제 (필요시)
+schtasks /delete /tn "QMD Update" /f</pre>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px;">또는 GUI: <strong>작업 스케줄러 → 작업 만들기 → 트리거 "30분마다 반복" → 동작 "wsl bash -c '...'"</strong></p>
+  </div>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Mac · cron 또는 launchd</div>
+      <span class="env-tag">crontab -e</span>
+    </div>
+    <pre># crontab -e 편집 후 한 줄 추가
+*/30 * * * * /usr/local/bin/qmd update && /usr/local/bin/qmd embed
+
+# 확인
+crontab -l
+
+# 또는 launchd (~/Library/LaunchAgents/com.qmd.update.plist)
+# StartInterval: 1800 (초 단위 = 30분)
+# 로드: launchctl load ~/Library/LaunchAgents/com.qmd.update.plist</pre>
+  </div>
+
+  <h3><span class="num">2</span>매일 아침 9시 — raw → wiki ingest</h3>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Windows · Task Scheduler</div>
+      <span class="env-tag">매일 09:00</span>
+    </div>
+    <pre>schtasks /create /tn "Wiki Ingest Morning" ^
+  /tr "wsl bash -c 'claude --print \"raw 폴더 새 파일 ingest해줘\"'" ^
+  /sc DAILY /st 09:00 /ru "%USERNAME%"
+
+# Codex 환경
+schtasks /create /tn "Wiki Ingest Codex" ^
+  /tr "wsl bash -c 'codex exec \"raw 폴더 ingest\"'" ^
+  /sc DAILY /st 09:00</pre>
+  </div>
+
+  <div class="env-card">
+    <div class="env-h">
+      <div class="env-name">Mac · cron</div>
+      <span class="env-tag">매일 09:00</span>
+    </div>
+    <pre># crontab -e
+0 9 * * * /usr/local/bin/claude --print "raw 폴더 새 파일 ingest해줘"
+
+# 로그 남기기
+0 9 * * * /usr/local/bin/claude --print "raw 폴더 ingest" >> ~/.qmd/ingest.log 2>&amp;1</pre>
+  </div>
+
+  <h3><span class="num">3</span>실전 흐름</h3>
+  <ol>
+    <li>낮 동안 옵시디언 클리퍼로 raw 수동 수집 (관심 자료 클립)</li>
+    <li><strong>30분마다</strong> QMD가 새 raw 자동 인덱싱 → 검색 즉시 가능</li>
+    <li><strong>다음 날 아침 9시</strong> — Claude/Codex가 raw 폴더 자동 ingest → wiki 페이지 생성 + 엔티티 링크</li>
+    <li>출근 후 위키만 열어보면 어제 수집 자료가 이미 컴파일 완료된 상태</li>
+  </ol>
+
+  <h3><span class="num">4</span>cron 주기 표</h3>
+  <table>
+    <thead><tr><th>cron 표현</th><th>의미</th><th>용도</th></tr></thead>
+    <tbody>
+      <tr><td><code class="inline">*/15 * * * *</code></td><td>15분마다</td><td>매우 활발한 수집</td></tr>
+      <tr><td><code class="inline">*/30 * * * *</code></td><td>30분마다 (권장)</td><td>일반 사용</td></tr>
+      <tr><td><code class="inline">0 * * * *</code></td><td>매시 정각</td><td>가벼운 사용</td></tr>
+      <tr><td><code class="inline">0 9 * * *</code></td><td>매일 9시</td><td>wiki ingest (raw → wiki)</td></tr>
+      <tr><td><code class="inline">0 9 * * 1-5</code></td><td>평일 9시</td><td>출근일만 ingest</td></tr>
+      <tr><td><code class="inline">0 9,18 * * *</code></td><td>매일 9시 + 18시</td><td>아침 + 퇴근 전 2회</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ref-box">
+    <strong>Gold In 5필드는 수동 확인</strong> — cron으로 ingest 자동화해도, "왜 모았는지" 빈 페이지는 자동 채우기 어렵습니다. 다음 날 아침 위키 검토 시 5필드(수집 이유 / My Take / 한 줄 통찰 / Gold Out / Action Intent) 수동 보강 권장.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p><strong>Obsidian Wiki · Day 2 보충 자료</strong> · 2026-05-13</p>
+    <p>
+      Repo: <a href="https://github.com/daniel8824-del/obsidian-wiki" target="_blank">github.com/daniel8824-del/obsidian-wiki</a><br>
+      관련: <a href="https://daniel8824-del.github.io/pos-day2/" target="_blank">pos-day2 본 강의</a> ·
+      <a href="https://daniel8824-del.github.io/claude-harness-catalog/" target="_blank">Day 1 자료</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
